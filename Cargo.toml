@@ -1,0 +1,6 @@
+[package]
+name = "weekend-raytracer"
+version = "0.1.0"
+authors = ["Juha Komulainen <komu@iki.fi>"]
+
+[dependencies]
