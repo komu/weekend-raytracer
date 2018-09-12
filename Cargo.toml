@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["Juha Komulainen <komu@iki.fi>"]
 
 [dependencies]
+cgmath = "^0.16.1"
