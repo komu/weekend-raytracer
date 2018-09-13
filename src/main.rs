@@ -35,8 +35,10 @@ fn main() {
 }
 
 fn color(r: &Ray) -> Vector3<f64> {
-    if hit_sphere(vec3(0.0, 0.0, -1.0), 0.5, r) {
-        return vec3(1.0, 0.0, 0.0);
+    let t = hit_sphere(vec3(0.0, 0.0, -1.0), 0.5, r);
+    if t > 0.0 {
+        let n = (r.point_at(t) - vec3(0.0, 0.0, -1.0)).normalize();
+        return 0.5 * vec3(n.x + 1.0, n.y + 1.0, n.z + 1.0);
     }
 
     let unit_direction = r.direction.normalize();
@@ -44,11 +46,15 @@ fn color(r: &Ray) -> Vector3<f64> {
     return (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0);
 }
 
-fn hit_sphere(ref center: Vector3<f64>, radius: f64, r: &Ray) -> bool {
+fn hit_sphere(ref center: Vector3<f64>, radius: f64, r: &Ray) -> f64 {
     let oc = r.origin - center;
     let a = dot(r.direction, r.direction);
     let b = 2.0 * dot(oc, r.direction);
     let c = dot(oc, oc) - radius * radius;
     let discriminant = b * b - 4.0 * a * c;
-    return discriminant > 0.0;
+    if discriminant < 0.0 {
+        return -1.0;
+    } else {
+        return (-b - discriminant.sqrt()) / (2.0 * a);
+    }
 }

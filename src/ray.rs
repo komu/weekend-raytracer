@@ -13,4 +13,8 @@ impl Ray {
             origin, direction,
         }
     }
+
+    pub fn point_at(&self, t: f64) -> Vector3<f64> {
+        self.origin + self.direction * t
+    }
 }
