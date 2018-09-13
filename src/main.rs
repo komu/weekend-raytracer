@@ -42,6 +42,7 @@ fn main() {
         }
 
         col /= ns as f64;
+        col = col.map({ |v| { v.sqrt() }});
 
         let ir = (255.99 * col.x) as u8;
         let ig = (255.99 * col.y) as u8;
@@ -53,12 +54,21 @@ fn main() {
     img.save("images/foo.png").unwrap();
 }
 
+fn random_in_unit_sphere() -> Vector3<f64> {
+    loop {
+        let v = 2.0 * vec3(random::<f64>(), random::<f64>(), random::<f64>()) - vec3(1.0, 1.0, 1.0);
+        if v.magnitude2() >= 1.0 {
+            return v;
+        }
+    }
+}
+
 fn color<T: Hitable>(ray: &Ray, world: &T) -> Vector3<f64> {
     let mut rec = HitRecord::new(f64::max_value());
 
-    if world.hit(ray, 0.0, f64::max_value(), &mut rec) {
-        let n = rec.normal;
-        return 0.5 * vec3(n.x + 1.0, n.y + 1.0, n.z + 1.0);
+    if world.hit(ray, 0.001, f64::max_value(), &mut rec) {
+        let target = rec.p + rec.normal + random_in_unit_sphere();
+        return 0.5 * color(&Ray::new(rec.p, target - rec.p), world);
     } else {
         let unit_direction = ray.direction.normalize();
         let t = 0.5 * (unit_direction.y + 1.0);
