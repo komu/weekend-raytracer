@@ -1,5 +1,7 @@
-use cgmath::{vec3, Vector3};
+use cgmath::prelude::*;
+use cgmath::Vector3;
 use ray::Ray;
+use std::f64::consts::PI;
 
 pub struct Camera {
     pub lower_left: Vector3<f64>,
@@ -9,12 +11,18 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new() -> Camera {
+    pub fn new(lookfrom: Vector3<f64>, lookat: Vector3<f64>, vup: Vector3<f64>, vfov: f64, aspect: f64) -> Camera {
+        let theta = vfov * PI / 180.0;
+        let half_height = (theta / 2.0).tan();
+        let half_width = aspect * half_height;
+        let w = (lookfrom - lookat).normalize();
+        let u = vup.cross(w).normalize();
+        let v = w.cross(u);
         Camera {
-            lower_left: vec3(-2.0, -1.0, -1.0),
-            horizontal: vec3(4.0, 0.0, 0.0),
-            vertical: vec3(0.0, 2.0, 0.0),
-            origin: vec3(0.0, 0.0, 0.0)
+            lower_left: lookfrom - half_width * u - half_height * v - w,
+            horizontal: 2.0 * half_width *  u,
+            vertical: 2.0 * half_height * v,
+            origin: lookfrom,
         }
     }
 
