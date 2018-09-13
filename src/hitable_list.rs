@@ -23,6 +23,7 @@ impl Hitable for HitableList {
                 rec.p = temp_rec.p;
                 rec.t = temp_rec.t;
                 rec.normal = temp_rec.normal;
+                rec.material = temp_rec.material.clone();
             }
         }
         hit_anything

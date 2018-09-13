@@ -5,6 +5,7 @@ extern crate rand;
 mod camera;
 mod hitable;
 mod hitable_list;
+mod material;
 mod ray;
 mod sphere;
 
@@ -17,6 +18,9 @@ use hitable::{Hitable, HitRecord};
 use hitable_list::HitableList;
 use sphere::Sphere;
 use rand::random;
+use material::Lambertian;
+use std::rc::Rc;
+use material::Metal;
 
 fn main() {
     let nx = 600;
@@ -25,8 +29,10 @@ fn main() {
 
     let camera = Camera::new();
     let world = HitableList::new(vec!(
-        Box::new(Sphere::new(vec3(0.0, 0.0, -1.0), 0.5)),
-        Box::new(Sphere::new(vec3(0.0, -100.5, -1.0), 100.0))
+        Box::new(Sphere::new(vec3(0.0, 0.0, -1.0), 0.5, Rc::new(Lambertian::new(vec3(0.8, 0.3, 0.3))))),
+        Box::new(Sphere::new(vec3(0.0, -100.5, -1.0), 100.0, Rc::new(Lambertian::new(vec3(0.8, 0.8, 0.0))))),
+        Box::new(Sphere::new(vec3(1.0, 0.0, -1.0), 0.5, Rc::new(Metal::new(vec3(0.8, 0.6, 0.2))))),
+        Box::new(Sphere::new(vec3(-1.0, 0.0, -1.0), 0.5, Rc::new(Metal::new(vec3(0.8, 0.8, 0.8)))))
     ));
 
     let img = ImageBuffer::from_fn(nx, ny, |i, j| {
@@ -38,7 +44,7 @@ fn main() {
             let v = (j as f64 + random::<f64>()) / (ny as f64);
 
             let ray = camera.get_ray(u, v);
-            col += color(&ray, &world);
+            col += color(&ray, &world, 0);
         }
 
         col /= ns as f64;
@@ -54,21 +60,31 @@ fn main() {
     img.save("images/foo.png").unwrap();
 }
 
-fn random_in_unit_sphere() -> Vector3<f64> {
-    loop {
-        let v = 2.0 * vec3(random::<f64>(), random::<f64>(), random::<f64>()) - vec3(1.0, 1.0, 1.0);
-        if v.magnitude2() >= 1.0 {
-            return v;
-        }
-    }
-}
-
-fn color<T: Hitable>(ray: &Ray, world: &T) -> Vector3<f64> {
+fn color<T: Hitable>(ray: &Ray, world: &T, depth: u32) -> Vector3<f64> {
     let mut rec = HitRecord::new(f64::max_value());
 
     if world.hit(ray, 0.001, f64::max_value(), &mut rec) {
-        let target = rec.p + rec.normal + random_in_unit_sphere();
-        return 0.5 * color(&Ray::new(rec.p, target - rec.p), world);
+        if depth >= 50 {
+            return vec3(0.0, 0.0, 0.0);
+        }
+        match rec.material.clone() {
+            Some(mat) => {
+                match mat.scatter(ray, &rec) {
+                    Some((scattered, attenuation)) => {
+                        let col = color(&scattered, world, depth + 1);
+                        return vec3(
+                            attenuation.x * col.x,
+                            attenuation.y * col.y,
+                            attenuation.z * col.z);
+
+                    }
+                    None => {}
+                }
+            }
+            None => {}
+        }
+
+        return vec3(0.0, 0.0, 0.0);
     } else {
         let unit_direction = ray.direction.normalize();
         let t = 0.5 * (unit_direction.y + 1.0);
