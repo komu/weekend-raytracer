@@ -2,25 +2,25 @@ extern crate cgmath;
 extern crate image;
 extern crate rand;
 
+use camera::Camera;
+use cgmath::{vec3, Vector3};
+use cgmath::prelude::*;
+use hitable::Hitable;
+use hitable_list::HitableList;
+use image::ImageBuffer;
+use material::Lambertian;
+use material::Metal;
+use rand::random;
+use ray::Ray;
+use sphere::Sphere;
+use std::rc::Rc;
+
 mod camera;
 mod hitable;
 mod hitable_list;
 mod material;
 mod ray;
 mod sphere;
-
-use cgmath::prelude::*;
-use cgmath::{vec3, Vector3};
-use camera::Camera;
-use ray::Ray;
-use image::ImageBuffer;
-use hitable::{Hitable, HitRecord};
-use hitable_list::HitableList;
-use sphere::Sphere;
-use rand::random;
-use material::Lambertian;
-use std::rc::Rc;
-use material::Metal;
 
 fn main() {
     let nx = 600;
@@ -61,30 +61,21 @@ fn main() {
 }
 
 fn color<T: Hitable>(ray: &Ray, world: &T, depth: u32) -> Vector3<f64> {
-    let mut rec = HitRecord::new(f64::max_value());
-
-    if world.hit(ray, 0.001, f64::max_value(), &mut rec) {
+    if let Some(rec) = world.hit(ray, 0.001, f64::max_value()) {
         if depth >= 50 {
             return vec3(0.0, 0.0, 0.0);
         }
-        match rec.material.clone() {
-            Some(mat) => {
-                match mat.scatter(ray, &rec) {
-                    Some((scattered, attenuation)) => {
-                        let col = color(&scattered, world, depth + 1);
-                        return vec3(
-                            attenuation.x * col.x,
-                            attenuation.y * col.y,
-                            attenuation.z * col.z);
 
-                    }
-                    None => {}
-                }
-            }
-            None => {}
+        if let Some((scattered, attenuation)) = rec.material.scatter(ray, &rec) {
+            let col = color(&scattered, world, depth + 1);
+            return vec3(
+                attenuation.x * col.x,
+                attenuation.y * col.y,
+                attenuation.z * col.z);
+        } else {
+            return vec3(0.0, 0.0, 0.0);
         }
 
-        return vec3(0.0, 0.0, 0.0);
     } else {
         let unit_direction = ray.direction.normalize();
         let t = 0.5 * (unit_direction.y + 1.0);
