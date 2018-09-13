@@ -8,8 +8,7 @@ use cgmath::prelude::*;
 use hitable::Hitable;
 use hitable_list::HitableList;
 use image::ImageBuffer;
-use material::Lambertian;
-use material::Metal;
+use material::{Dielectric, Lambertian, Metal};
 use rand::random;
 use ray::Ray;
 use sphere::Sphere;
@@ -33,7 +32,7 @@ fn main() {
         Box::new(Sphere::new(vec3(0.0, 0.0, -1.0), 0.5, Rc::new(Lambertian::new(vec3(0.8, 0.3, 0.3))))),
         Box::new(Sphere::new(vec3(0.0, -100.5, -1.0), 100.0, Rc::new(Lambertian::new(vec3(0.8, 0.8, 0.0))))),
         Box::new(Sphere::new(vec3(1.0, 0.0, -1.0), 0.5, Rc::new(Metal::new(vec3(0.8, 0.6, 0.2), 1.0)))),
-        Box::new(Sphere::new(vec3(-1.0, 0.0, -1.0), 0.5, Rc::new(Metal::new(vec3(0.8, 0.8, 0.8), 0.3))))
+        Box::new(Sphere::new(vec3(-1.0, 0.0, -1.0), 0.5, Rc::new(Dielectric::new(1.5))))
     ));
 
     let mut previous_j = 0;

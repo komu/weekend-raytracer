@@ -29,7 +29,7 @@ impl Material for Lambertian {
 
 pub struct Metal {
     albedo: Vector3<f64>,
-    fuzz: f64
+    fuzz: f64,
 }
 
 impl Metal {
@@ -40,13 +40,46 @@ impl Metal {
 
 impl Material for Metal {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Ray, Vector3<f64>)> {
-        let reflected = reflect(r_in.direction.normalize(), rec.normal);
+        let reflected = reflect(&r_in.direction.normalize(), &rec.normal);
         let scattered = Ray::new(rec.p, reflected + self.fuzz * random_in_unit_sphere());
 
         if dot(scattered.direction, rec.normal) > 0.0 {
             Some((scattered, self.albedo))
         } else {
             None
+        }
+    }
+}
+
+pub struct Dielectric {
+    refraction_index: f64
+}
+
+impl Dielectric {
+    pub fn new(refraction_index: f64) -> Dielectric {
+        Dielectric { refraction_index }
+    }
+}
+
+impl Material for Dielectric {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Ray, Vector3<f64>)> {
+        let attenuation = vec3(1.0, 1.0, 1.0);
+        let outward_normal: Vector3<f64>;
+        let ni_over_nt: f64;
+
+        if r_in.direction.dot(rec.normal) > 0.0 {
+            outward_normal = -rec.normal;
+            ni_over_nt = self.refraction_index;
+        } else {
+            outward_normal = rec.normal;
+            ni_over_nt = 1.0 / self.refraction_index;
+        }
+
+        if let Some(refracted) = refract(&r_in.direction, &outward_normal, ni_over_nt) {
+            Some((Ray::new(rec.p, refracted), attenuation))
+        } else {
+            let reflected = reflect(&r_in.direction, &rec.normal);
+            Some((Ray::new(rec.p, reflected), attenuation))
         }
     }
 }
@@ -60,6 +93,17 @@ fn random_in_unit_sphere() -> Vector3<f64> {
     }
 }
 
-fn reflect(v: Vector3<f64>, n: Vector3<f64>) -> Vector3<f64> {
-    v - 2.0 * dot(v, n) * n
+fn reflect(v: &Vector3<f64>, n: &Vector3<f64>) -> Vector3<f64> {
+    v - 2.0 * v.dot(*n) * n
+}
+
+fn refract(v: &Vector3<f64>, n: &Vector3<f64>, ni_over_nt: f64) -> Option<Vector3<f64>> {
+    let uv = v.normalize();
+    let dt = uv.dot(*n);
+    let discriminant = 1.0 - ni_over_nt * ni_over_nt * (1.0 - dt * dt);
+    if discriminant > 0.0 {
+        Some(ni_over_nt * (uv - n * dt) - n * discriminant.sqrt())
+    } else {
+        None
+    }
 }
