@@ -13,6 +13,7 @@ use material::Metal;
 use rand::random;
 use ray::Ray;
 use sphere::Sphere;
+use std::io::prelude::*;
 use std::rc::Rc;
 
 mod camera;
@@ -35,7 +36,14 @@ fn main() {
         Box::new(Sphere::new(vec3(-1.0, 0.0, -1.0), 0.5, Rc::new(Metal::new(vec3(0.8, 0.8, 0.8)))))
     ));
 
+    let mut previous_j = 0;
     let img = ImageBuffer::from_fn(nx, ny, |i, j| {
+        if j != previous_j {
+            previous_j = j;
+            print!("\r{}/{}", j + 1, ny);
+            std::io::stdout().flush().ok().expect("Could not flush stdout");
+        }
+
         let j = ny - j;
 
         let mut col = vec3(0.0, 0.0, 0.0);
@@ -57,6 +65,7 @@ fn main() {
         image::Rgb([ir, ig, ib])
     });
 
+    println!();
     img.save("images/foo.png").unwrap();
 }
 
