@@ -6,3 +6,4 @@ authors = ["Juha Komulainen <komu@iki.fi>"]
 [dependencies]
 cgmath = "*"
 image = "*"
+rand = "*"

@@ -1,5 +1,6 @@
 extern crate cgmath;
 extern crate image;
+extern crate rand;
 
 mod camera;
 mod hitable;
@@ -15,10 +16,12 @@ use image::ImageBuffer;
 use hitable::{Hitable, HitRecord};
 use hitable_list::HitableList;
 use sphere::Sphere;
+use rand::random;
 
 fn main() {
     let nx = 600;
     let ny = 300;
+    let ns = 100;
 
     let camera = Camera::new();
     let world = HitableList::new(vec!(
@@ -28,14 +31,21 @@ fn main() {
 
     let img = ImageBuffer::from_fn(nx, ny, |i, j| {
         let j = ny - j;
-        let u = (i as f64) / (nx as f64);
-        let v = (j as f64) / (ny as f64);
 
-        let r = camera.get_ray(u, v);
-        let c = color(&r, &world);
-        let ir = (255.99 * c.x) as u8;
-        let ig = (255.99 * c.y) as u8;
-        let ib = (255.99 * c.z) as u8;
+        let mut col = vec3(0.0, 0.0, 0.0);
+        for _ in 0..ns {
+            let u = (i as f64 + random::<f64>()) / (nx as f64);
+            let v = (j as f64 + random::<f64>()) / (ny as f64);
+
+            let ray = camera.get_ray(u, v);
+            col += color(&ray, &world);
+        }
+
+        col /= ns as f64;
+
+        let ir = (255.99 * col.x) as u8;
+        let ig = (255.99 * col.y) as u8;
+        let ib = (255.99 * col.z) as u8;
 
         image::Rgb([ir, ig, ib])
     });
