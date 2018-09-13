@@ -66,21 +66,29 @@ impl Material for Dielectric {
         let attenuation = vec3(1.0, 1.0, 1.0);
         let outward_normal: Vector3<f64>;
         let ni_over_nt: f64;
+        let cosine: f64;
 
         if r_in.direction.dot(rec.normal) > 0.0 {
             outward_normal = -rec.normal;
             ni_over_nt = self.refraction_index;
+            cosine = self.refraction_index * r_in.direction.dot(rec.normal) / r_in.direction.magnitude();
         } else {
             outward_normal = rec.normal;
             ni_over_nt = 1.0 / self.refraction_index;
+            cosine = -dot(r_in.direction, rec.normal) / r_in.direction.magnitude();
         }
 
+
         if let Some(refracted) = refract(&r_in.direction, &outward_normal, ni_over_nt) {
-            Some((Ray::new(rec.p, refracted), attenuation))
-        } else {
-            let reflected = reflect(&r_in.direction, &rec.normal);
-            Some((Ray::new(rec.p, reflected), attenuation))
+            let reflect_prob = schlick(cosine, self.refraction_index);
+
+            if random::<f64>() >= reflect_prob {
+                return Some((Ray::new(rec.p, refracted), attenuation))
+            }
         }
+
+        let reflected = reflect(&r_in.direction, &rec.normal);
+        return Some((Ray::new(rec.p, reflected), attenuation))
     }
 }
 
@@ -106,4 +114,10 @@ fn refract(v: &Vector3<f64>, n: &Vector3<f64>, ni_over_nt: f64) -> Option<Vector
     } else {
         None
     }
+}
+
+fn schlick(cosine: f64, ref_idx: f64) -> f64 {
+    let mut r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
+    r0 = r0 * r0;
+    r0 + (1.0 - r0) * (1.0 - cosine).powf(5.0)
 }
