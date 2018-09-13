@@ -1,15 +1,15 @@
-use ray::Ray;
-use hitable::HitRecord;
+use cgmath::{dot, vec3, Vector3};
 use cgmath::prelude::*;
-use cgmath::{Vector3, vec3, dot};
+use hitable::HitRecord;
 use rand::random;
+use ray::Ray;
 
 pub trait Material {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Ray, Vector3<f64>)>;
 }
 
 pub struct Lambertian {
-    pub albedo: Vector3<f64>
+    albedo: Vector3<f64>
 }
 
 impl Lambertian {
@@ -28,21 +28,26 @@ impl Material for Lambertian {
 }
 
 pub struct Metal {
-    pub albedo: Vector3<f64>
+    albedo: Vector3<f64>,
+    fuzz: f64
 }
 
 impl Metal {
-    pub fn new(albedo: Vector3<f64>) -> Metal {
-        Metal { albedo }
+    pub fn new(albedo: Vector3<f64>, fuzz: f64) -> Metal {
+        Metal { albedo, fuzz: fuzz.min(1.0) }
     }
 }
 
 impl Material for Metal {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Ray, Vector3<f64>)> {
         let reflected = reflect(r_in.direction.normalize(), rec.normal);
-        let scattered = Ray::new(rec.p, reflected);
+        let scattered = Ray::new(rec.p, reflected + self.fuzz * random_in_unit_sphere());
 
-        return Some((scattered, self.albedo));
+        if dot(scattered.direction, rec.normal) > 0.0 {
+            Some((scattered, self.albedo))
+        } else {
+            None
+        }
     }
 }
 
