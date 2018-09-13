@@ -26,9 +26,14 @@ fn main() {
     let nx = 600;
     let ny = 300;
     let ns = 100;
+    let lookfrom = vec3(3.0, 3.0, 2.0);
+    let lookat = vec3(0.0, 0.0, -1.0);
+    let up = vec3(0.0, 1.0, 0.0);
     let aspect = nx as f64 / ny as f64;
+    let dist_to_focus = (lookfrom - lookat).magnitude();
+    let aperture = 2.0;
 
-    let camera = Camera::new(vec3(-2.0, 2.0, 1.0), vec3(0.0, 0.0, -1.0), vec3(0.0, 1.0, 0.0), 90.0, aspect);
+    let camera = Camera::new(lookfrom, lookat, up, 20.0, aspect, aperture, dist_to_focus);
     let world = HitableList::new(vec!(
         Box::new(Sphere::new(vec3(0.0, 0.0, -1.0), 0.5, Rc::new(Lambertian::new(vec3(0.1, 0.2, 0.5))))),
         Box::new(Sphere::new(vec3(0.0, -100.5, -1.0), 100.0, Rc::new(Lambertian::new(vec3(0.8, 0.8, 0.0))))),
