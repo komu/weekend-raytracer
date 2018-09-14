@@ -9,7 +9,7 @@ use hitable::Hitable;
 use hitable_list::HitableList;
 use image::ImageBuffer;
 use material::{Dielectric, Lambertian, Metal};
-use rand::random;
+use rand::{random, Rng, thread_rng};
 use ray::Ray;
 use sphere::{MovingSphere, Sphere};
 use std::io::prelude::*;
@@ -58,7 +58,8 @@ fn main() {
     let aspect = nx as f64 / ny as f64;
 
     let camera = Camera::new(lookfrom, lookat, up, 20.0, aspect, aperture, dist_to_focus, 0.0, 1.0);
-    let world = random_scene();
+    let mut rng = thread_rng();
+    let world = random_scene(&mut rng);
     let now = Instant::now();
 
     let mut previous_j = 0;
@@ -96,22 +97,22 @@ fn main() {
     img.save("images/output.png").unwrap();
 }
 
-fn random_scene() -> HitableList {
+fn random_scene<T : Rng>(rng: &mut T) -> HitableList {
     let mut vec: Vec<Box<Hitable>> = vec![];
 
     vec.push(Box::new(Sphere::new(vec3(0.0, -1000.0, 0.0), 1000.0, Rc::new(Lambertian::new(vec3(0.5, 0.5, 0.5))))));
 
     for a in -11..11 {
-        for b in -11..11 {
-            let center = vec3(a as f64 + 0.9 * random::<f64>(), 0.2, b as f64 + 0.9 * random::<f64>());
+        for b in -11..11  {
+            let center = vec3(a as f64 + 0.9 * rng.gen::<f64>(), 0.2, b as f64 + 0.9 * rng.gen::<f64>());
 
             if (center - vec3(4.0, 0.2, 0.0)).magnitude() > 0.9 {
-                let choose_mat = random::<f64>();
+                let choose_mat = rng.gen::<f64>();
 
                 if choose_mat < 0.8 {
-                    vec.push(Box::new(MovingSphere::new(center, center + vec3(0.0, 0.5 * random::<f64>(), 0.0), 0.0, 1.0, 0.2, Rc::new(Lambertian::new(vec3(random::<f64>() * random::<f64>(), random::<f64>() * random::<f64>(), random::<f64>() * random::<f64>()))))));
+                    vec.push(Box::new(MovingSphere::new(center, center + vec3(0.0, 0.5 * rng.gen::<f64>(), 0.0), 0.0, 1.0, 0.2, Rc::new(Lambertian::new(vec3(rng.gen::<f64>() * rng.gen::<f64>(), rng.gen::<f64>() * rng.gen::<f64>(), rng.gen::<f64>() * rng.gen::<f64>()))))));
                 } else if choose_mat < 0.95 {
-                    vec.push(Box::new(Sphere::new(center, 0.2, Rc::new(Metal::new(vec3(0.5 * (1.0 + random::<f64>()), 0.5 * (1.0 + random::<f64>()), 0.5 * (1.0 + random::<f64>())), 0.5 * random::<f64>())))));
+                    vec.push(Box::new(Sphere::new(center, 0.2, Rc::new(Metal::new(vec3(0.5 * (1.0 + rng.gen::<f64>()), 0.5 * (1.0 + rng.gen::<f64>()), 0.5 * (1.0 + rng.gen::<f64>())), 0.5 * rng.gen::<f64>())))));
                 } else {
                     vec.push(Box::new(Sphere::new(center, 0.2, Rc::new(Dielectric::new(1.5)))));
                 }
