@@ -11,7 +11,9 @@ pub struct Camera {
     origin: Vector3<f64>,
     lens_radius: f64,
     u: Vector3<f64>,
-    v: Vector3<f64>
+    v: Vector3<f64>,
+    time0: f64,
+    time1: f64,
 }
 
 impl Camera {
@@ -21,7 +23,9 @@ impl Camera {
                vfov: f64,
                aspect: f64,
                aperture: f64,
-               focus_dist: f64) -> Camera {
+               focus_dist: f64,
+               time0: f64,
+               time1: f64) -> Camera {
         let theta = vfov * PI / 180.0;
         let half_height = (theta / 2.0).tan();
         let half_width = aspect * half_height;
@@ -35,16 +39,20 @@ impl Camera {
             origin: lookfrom,
             lens_radius: aperture / 2.0,
             u,
-            v
+            v,
+            time0,
+            time1,
         }
     }
 
     pub fn get_ray(&self, s: f64, t: f64) -> Ray {
         let rd = self.lens_radius * random_in_unit_disc();
         let offset = self.u * rd.x + self.v * rd.y;
+        let time = self.time0 + random::<f64>() * (self.time1 - self.time0);
         Ray::new(
             self.origin + offset,
             self.lower_left + s * self.horizontal + t * self.vertical - self.origin - offset,
+            time,
         )
     }
 }

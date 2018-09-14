@@ -9,10 +9,9 @@ use hitable::Hitable;
 use hitable_list::HitableList;
 use image::ImageBuffer;
 use material::{Dielectric, Lambertian, Metal};
-use material::Material;
 use rand::random;
 use ray::Ray;
-use sphere::Sphere;
+use sphere::{MovingSphere, Sphere};
 use std::io::prelude::*;
 use std::rc::Rc;
 
@@ -52,12 +51,12 @@ fn main() {
     let lookfrom = vec3(13.0, 2.0, 3.0);
     let lookat = vec3(0.0, 0.0, 0.0);
     let dist_to_focus = 10.0;
-    let aperture = 0.1;
+    let aperture = 0.0;
 
     let up = vec3(0.0, 1.0, 0.0);
     let aspect = nx as f64 / ny as f64;
 
-    let camera = Camera::new(lookfrom, lookat, up, 20.0, aspect, aperture, dist_to_focus);
+    let camera = Camera::new(lookfrom, lookat, up, 20.0, aspect, aperture, dist_to_focus, 0.0, 1.0);
     let world = random_scene();
 
     let mut previous_j = 0;
@@ -103,17 +102,15 @@ fn random_scene() -> HitableList {
             let center = vec3(a as f64 + 0.9 * random::<f64>(), 0.2, b as f64 + 0.9 * random::<f64>());
 
             if (center - vec3(4.0, 0.2, 0.0)).magnitude() > 0.9 {
-                let material: Rc<Material>;
                 let choose_mat = random::<f64>();
 
                 if choose_mat < 0.8 {
-                    material = Rc::new(Lambertian::new(vec3(random::<f64>() * random::<f64>(), random::<f64>() * random::<f64>(), random::<f64>() * random::<f64>())));
+                    vec.push(Box::new(MovingSphere::new(center, center + vec3(0.0, 0.5 * random::<f64>(), 0.0), 0.0, 1.0, 0.2, Rc::new(Lambertian::new(vec3(random::<f64>() * random::<f64>(), random::<f64>() * random::<f64>(), random::<f64>() * random::<f64>()))))));
                 } else if choose_mat < 0.95 {
-                    material = Rc::new(Metal::new(vec3(0.5 * (1.0 + random::<f64>()), 0.5 * (1.0 + random::<f64>()), 0.5 * (1.0 + random::<f64>())), 0.5 * random::<f64>()));
+                    vec.push(Box::new(Sphere::new(center, 0.2, Rc::new(Metal::new(vec3(0.5 * (1.0 + random::<f64>()), 0.5 * (1.0 + random::<f64>()), 0.5 * (1.0 + random::<f64>())), 0.5 * random::<f64>())))));
                 } else {
-                    material = Rc::new(Dielectric::new(1.5));
+                    vec.push(Box::new(Sphere::new(center, 0.2, Rc::new(Dielectric::new(1.5)))));
                 }
-                vec.push(Box::new(Sphere::new(center, 0.2, material)));
             }
         }
     }
