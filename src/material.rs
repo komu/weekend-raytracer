@@ -23,7 +23,7 @@ impl Material for Lambertian {
         let target = rec.p + rec.normal + random_in_unit_sphere();
         let scattered = Ray::new(rec.p, target - rec.p);
 
-        return Some((scattered, self.albedo));
+        Some((scattered, self.albedo))
     }
 }
 
@@ -88,7 +88,7 @@ impl Material for Dielectric {
         }
 
         let reflected = reflect(&r_in.direction, &rec.normal);
-        return Some((Ray::new(rec.p, reflected), attenuation))
+        Some((Ray::new(rec.p, reflected), attenuation))
     }
 }
 

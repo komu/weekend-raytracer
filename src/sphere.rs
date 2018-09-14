@@ -30,16 +30,16 @@ impl Hitable for Sphere {
         if discriminant > 0.0 {
             let t = (-b - (b * b - a * c).sqrt()) / a;
             if t < t_max && t > t_min {
-                let p = ray.point_at(t);
-                return Some(HitRecord::new(t, p, (p - self.center) / self.radius, &self.material));
+                let pt = ray.point_at(t);
+                return Some(HitRecord::new(t, pt, (pt - self.center) / self.radius, &self.material));
             }
 
             let t = (-b + (b * b - a * c).sqrt()) / a;
             if t < t_max && t > t_min {
-                let p = ray.point_at(t);
-                return Some(HitRecord::new(t, p, (p - self.center) / self.radius, &self.material));
+                let pt = ray.point_at(t);
+                return Some(HitRecord::new(t, pt, (pt - self.center) / self.radius, &self.material));
             }
         }
-        return None;
+        None
     }
 }

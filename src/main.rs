@@ -65,7 +65,7 @@ fn main() {
         if j != previous_j {
             previous_j = j;
             print!("\r{}/{}", j + 1, ny);
-            std::io::stdout().flush().ok().expect("Could not flush stdout");
+            std::io::stdout().flush().expect("Could not flush stdout");
         }
 
         let j = ny - j;
