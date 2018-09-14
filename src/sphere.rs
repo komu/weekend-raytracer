@@ -2,16 +2,16 @@ use cgmath::{dot, Vector3};
 use hitable::{Hitable, HitRecord};
 use material::Material;
 use ray::Ray;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct Sphere {
     pub center: Vector3<f64>,
     pub radius: f64,
-    pub material: Rc<Material>
+    pub material: Arc<Material>
 }
 
 impl Sphere {
-    pub fn new(center: Vector3<f64>, radius: f64, material: Rc<Material>) -> Sphere {
+    pub fn new(center: Vector3<f64>, radius: f64, material: Arc<Material>) -> Sphere {
         Sphere {
             center,
             radius,
@@ -50,11 +50,11 @@ pub struct MovingSphere {
     time0: f64,
     time1: f64,
     pub radius: f64,
-    pub material: Rc<Material>
+    pub material: Arc<Material>
 }
 
 impl MovingSphere {
-    pub fn new(center0: Vector3<f64>, center1: Vector3<f64>, time0: f64, time1: f64, radius: f64, material: Rc<Material>) -> MovingSphere {
+    pub fn new(center0: Vector3<f64>, center1: Vector3<f64>, time0: f64, time1: f64, radius: f64, material: Arc<Material>) -> MovingSphere {
         MovingSphere {
             center0,
             center1,

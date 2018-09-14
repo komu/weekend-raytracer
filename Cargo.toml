@@ -7,3 +7,4 @@ authors = ["Juha Komulainen <komu@iki.fi>"]
 cgmath = "*"
 image = "*"
 rand = "*"
+num_cpus = "*"

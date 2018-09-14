@@ -4,7 +4,7 @@ use hitable::HitRecord;
 use rand::random;
 use ray::Ray;
 
-pub trait Material {
+pub trait Material : Sync + Send {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Ray, Vector3<f64>)>;
 }
 

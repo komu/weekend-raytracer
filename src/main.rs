@@ -1,5 +1,6 @@
 extern crate cgmath;
 extern crate image;
+extern crate num_cpus;
 extern crate rand;
 
 use camera::Camera;
@@ -7,13 +8,14 @@ use cgmath::{vec3, Vector3};
 use cgmath::prelude::*;
 use hitable::Hitable;
 use hitable_list::HitableList;
-use image::ImageBuffer;
+use image::{ImageBuffer, Rgb};
 use material::{Dielectric, Lambertian, Metal};
 use rand::{random, Rng, thread_rng};
 use ray::Ray;
 use sphere::{MovingSphere, Sphere};
 use std::io::prelude::*;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::Instant;
 
 mod camera;
@@ -23,7 +25,7 @@ mod material;
 mod ray;
 mod sphere;
 
-fn color<T: Hitable>(ray: &Ray, world: &T, depth: u32) -> Vector3<f64> {
+fn color<T: Hitable + ?Sized>(ray: &Ray, world: &T, depth: u32) -> Vector3<f64> {
     if let Some(rec) = world.hit(ray, 0.001, f64::max_value()) {
         if depth >= 50 {
             return vec3(0.0, 0.0, 0.0);
@@ -46,9 +48,9 @@ fn color<T: Hitable>(ray: &Ray, world: &T, depth: u32) -> Vector3<f64> {
 }
 
 fn main() {
-    let nx = 400;
-    let ny = 200;
-    let ns = 10;
+    let nx = 600;
+    let ny = 400;
+    let ns = 20;
     let lookfrom = vec3(13.0, 2.0, 3.0);
     let lookat = vec3(0.0, 0.0, 0.0);
     let dist_to_focus = 10.0;
@@ -57,50 +59,90 @@ fn main() {
     let up = vec3(0.0, 1.0, 0.0);
     let aspect = nx as f64 / ny as f64;
 
-    let camera = Camera::new(lookfrom, lookat, up, 20.0, aspect, aperture, dist_to_focus, 0.0, 1.0);
+    let camera = Arc::new(Camera::new(lookfrom, lookat, up, 20.0, aspect, aperture, dist_to_focus, 0.0, 1.0));
     let mut rng = thread_rng();
-    let world = random_scene(&mut rng);
+    let world: Arc<HitableList> = Arc::new(random_scene(&mut rng));
     let now = Instant::now();
 
-    let mut previous_j = 0;
-    let img = ImageBuffer::from_fn(nx, ny, |i, j| {
-        if j != previous_j {
-            previous_j = j;
-            print!("\r{}/{}", j + 1, ny);
-            std::io::stdout().flush().expect("Could not flush stdout");
-        }
+    let cpus = num_cpus::get();
 
-        let j = ny - j;
+    let arc_img = Arc::new(Mutex::new(ImageBuffer::new(nx, ny)));
+    let mut threads = Vec::new();
+    let y_counter = Arc::new(Mutex::new(0));
 
-        let mut col = vec3(0.0, 0.0, 0.0);
-        for _ in 0..ns {
-            let u = (i as f64 + random::<f64>()) / (nx as f64);
-            let v = (j as f64 + random::<f64>()) / (ny as f64);
+    for _ in 0..cpus {
+        let arc_img = arc_img.clone();
+        let camera = camera.clone();
+        let y_counter = y_counter.clone();
+        let world = world.clone();
 
-            let ray = camera.get_ray(u, v);
-            col += color(&ray, &world, 0);
-        }
+        threads.push(thread::spawn(move || {
+            let camera: &Camera = &camera;
+            let world: &HitableList = &*world;
+            let mut row = Vec::with_capacity(nx as usize);
 
-        col /= ns as f64;
-        col = col.map({ |v| { v.sqrt() } });
+            loop {
+                let y = get_and_increment(&y_counter);
+                if y >= ny {
+                    break;
+                }
 
-        let ir = (255.99 * col.x) as u8;
-        let ig = (255.99 * col.y) as u8;
-        let ib = (255.99 * col.z) as u8;
+                print!("\r{}/{}", y + 1, ny);
+                std::io::stdout().flush().expect("Could not flush stdout");
 
-        image::Rgb([ir, ig, ib])
-    });
+                row.clear();
+                for x in 0..nx {
+                    let i = x;
+                    let j = ny - y;
+
+                    let mut col = vec3(0.0, 0.0, 0.0);
+                    for _ in 0..ns {
+                        let u = (i as f64 + random::<f64>()) / (nx as f64);
+                        let v = (j as f64 + random::<f64>()) / (ny as f64);
+
+                        let ray = camera.get_ray(u, v);
+                        col += color(&ray, world, 0);
+                    }
+
+                    col /= ns as f64;
+                    col = col.map({ |v| { v.sqrt() } });
+
+                    let ir = (255.99 * col.x) as u8;
+                    let ig = (255.99 * col.y) as u8;
+                    let ib = (255.99 * col.z) as u8;
+
+                    row.push(Rgb([ir, ig, ib]));
+                }
+
+                let mut img = arc_img.lock().expect("could not lock image");
+                for (x, color) in row.iter().enumerate() {
+                    img.put_pixel(x as u32, y, *color);
+                }
+            }
+        }));
+    }
+
+    for thread in threads {
+        let _ = thread.join();
+    }
 
     let elapsed_seconds = now.elapsed().as_secs();
     let samples = (nx * ny * ns) as u64;
     println!("\nrendered {} samples in {} seconds ({} samples/s)", samples, elapsed_seconds, samples / elapsed_seconds);
-    img.save("images/output.png").unwrap();
+    arc_img.lock().unwrap().save("images/output.png").unwrap();
+}
+
+fn get_and_increment(counter: &Arc<Mutex<u32>>) -> u32 {
+    let mut shared_y = counter.lock().expect("locking counter failed");
+    let value = *shared_y;
+    *shared_y = value + 1;
+    value
 }
 
 fn random_scene<T : Rng>(rng: &mut T) -> HitableList {
     let mut vec: Vec<Box<Hitable>> = vec![];
 
-    vec.push(Box::new(Sphere::new(vec3(0.0, -1000.0, 0.0), 1000.0, Rc::new(Lambertian::new(vec3(0.5, 0.5, 0.5))))));
+    vec.push(Box::new(Sphere::new(vec3(0.0, -1000.0, 0.0), 1000.0, Arc::new(Lambertian::new(vec3(0.5, 0.5, 0.5))))));
 
     for a in -11..11 {
         for b in -11..11  {
@@ -110,19 +152,19 @@ fn random_scene<T : Rng>(rng: &mut T) -> HitableList {
                 let choose_mat = rng.gen::<f64>();
 
                 if choose_mat < 0.8 {
-                    vec.push(Box::new(MovingSphere::new(center, center + vec3(0.0, 0.5 * rng.gen::<f64>(), 0.0), 0.0, 1.0, 0.2, Rc::new(Lambertian::new(vec3(rng.gen::<f64>() * rng.gen::<f64>(), rng.gen::<f64>() * rng.gen::<f64>(), rng.gen::<f64>() * rng.gen::<f64>()))))));
+                    vec.push(Box::new(MovingSphere::new(center, center + vec3(0.0, 0.5 * rng.gen::<f64>(), 0.0), 0.0, 1.0, 0.2, Arc::new(Lambertian::new(vec3(rng.gen::<f64>() * rng.gen::<f64>(), rng.gen::<f64>() * rng.gen::<f64>(), rng.gen::<f64>() * rng.gen::<f64>()))))));
                 } else if choose_mat < 0.95 {
-                    vec.push(Box::new(Sphere::new(center, 0.2, Rc::new(Metal::new(vec3(0.5 * (1.0 + rng.gen::<f64>()), 0.5 * (1.0 + rng.gen::<f64>()), 0.5 * (1.0 + rng.gen::<f64>())), 0.5 * rng.gen::<f64>())))));
+                    vec.push(Box::new(Sphere::new(center, 0.2, Arc::new(Metal::new(vec3(0.5 * (1.0 + rng.gen::<f64>()), 0.5 * (1.0 + rng.gen::<f64>()), 0.5 * (1.0 + rng.gen::<f64>())), 0.5 * rng.gen::<f64>())))));
                 } else {
-                    vec.push(Box::new(Sphere::new(center, 0.2, Rc::new(Dielectric::new(1.5)))));
+                    vec.push(Box::new(Sphere::new(center, 0.2, Arc::new(Dielectric::new(1.5)))));
                 }
             }
         }
     }
 
-    vec.push(Box::new(Sphere::new(vec3(0.0, 1.0, 0.0), 1.0, Rc::new(Dielectric::new(1.5)))));
-    vec.push(Box::new(Sphere::new(vec3(-4.0, 1.0, 0.0), 1.0, Rc::new(Lambertian::new(vec3(0.4, 0.2, 0.1))))));
-    vec.push(Box::new(Sphere::new(vec3(4.0, 1.0, 0.0), 1.0, Rc::new(Metal::new(vec3(0.7, 0.6, 0.5), 0.0)))));
+    vec.push(Box::new(Sphere::new(vec3(0.0, 1.0, 0.0), 1.0, Arc::new(Dielectric::new(1.5)))));
+    vec.push(Box::new(Sphere::new(vec3(-4.0, 1.0, 0.0), 1.0, Arc::new(Lambertian::new(vec3(0.4, 0.2, 0.1))))));
+    vec.push(Box::new(Sphere::new(vec3(4.0, 1.0, 0.0), 1.0, Arc::new(Metal::new(vec3(0.7, 0.6, 0.5), 0.0)))));
 
     HitableList::new(vec)
 }
