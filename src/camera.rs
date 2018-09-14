@@ -1,4 +1,4 @@
-use cgmath::{vec3, Vector3};
+use cgmath::{Point3, vec3, Vector3};
 use cgmath::prelude::*;
 use rand::random;
 use ray::Ray;
@@ -8,7 +8,7 @@ pub struct Camera {
     lower_left: Vector3<f64>,
     horizontal: Vector3<f64>,
     vertical: Vector3<f64>,
-    origin: Vector3<f64>,
+    origin: Point3<f64>,
     lens_radius: f64,
     u: Vector3<f64>,
     v: Vector3<f64>,
@@ -17,7 +17,7 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(lookfrom: Vector3<f64>,
+    pub fn new(lookfrom: Point3<f64>,
                lookat: Vector3<f64>,
                vup: Vector3<f64>,
                vfov: f64,
@@ -29,11 +29,11 @@ impl Camera {
         let theta = vfov * PI / 180.0;
         let half_height = (theta / 2.0).tan();
         let half_width = aspect * half_height;
-        let w = (lookfrom - lookat).normalize();
+        let w = (lookfrom.to_vec() - lookat).normalize();
         let u = vup.cross(w).normalize();
         let v = w.cross(u);
         Camera {
-            lower_left: lookfrom - half_width * focus_dist * u - half_height * focus_dist * v - focus_dist * w,
+            lower_left: lookfrom.to_vec() - half_width * focus_dist * u - half_height * focus_dist * v - focus_dist * w,
             horizontal: 2.0 * half_width * focus_dist * u,
             vertical: 2.0 * half_height * focus_dist * v,
             origin: lookfrom,
@@ -51,7 +51,7 @@ impl Camera {
         let time = self.time0 + random::<f64>() * (self.time1 - self.time0);
         Ray::new(
             self.origin + offset,
-            self.lower_left + s * self.horizontal + t * self.vertical - self.origin - offset,
+            self.lower_left + s * self.horizontal + t * self.vertical - self.origin.to_vec() - offset,
             time,
         )
     }

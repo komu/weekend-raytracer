@@ -1,17 +1,18 @@
-use cgmath::{dot, Vector3};
+use cgmath::Point3;
+use cgmath::prelude::*;
 use hitable::{Hitable, HitRecord};
 use material::Material;
 use ray::Ray;
 use std::sync::Arc;
 
 pub struct Sphere {
-    pub center: Vector3<f64>,
+    pub center: Point3<f64>,
     pub radius: f64,
     pub material: Arc<Material>
 }
 
 impl Sphere {
-    pub fn new(center: Vector3<f64>, radius: f64, material: Arc<Material>) -> Sphere {
+    pub fn new(center: Point3<f64>, radius: f64, material: Arc<Material>) -> Sphere {
         Sphere {
             center,
             radius,
@@ -23,9 +24,9 @@ impl Sphere {
 impl Hitable for Sphere {
     fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
         let oc = ray.origin - self.center;
-        let a = dot(ray.direction, ray.direction);
-        let b = dot(oc, ray.direction);
-        let c = dot(oc, oc) - self.radius * self.radius;
+        let a = ray.direction.dot(ray.direction);
+        let b = oc.dot(ray.direction);
+        let c = oc.dot(oc) - self.radius * self.radius;
         let discriminant = b * b - a * c;
         if discriminant > 0.0 {
             let t = (-b - (b * b - a * c).sqrt()) / a;
@@ -45,8 +46,8 @@ impl Hitable for Sphere {
 }
 
 pub struct MovingSphere {
-    pub center0: Vector3<f64>,
-    pub center1: Vector3<f64>,
+    pub center0: Point3<f64>,
+    pub center1: Point3<f64>,
     time0: f64,
     time1: f64,
     pub radius: f64,
@@ -54,7 +55,7 @@ pub struct MovingSphere {
 }
 
 impl MovingSphere {
-    pub fn new(center0: Vector3<f64>, center1: Vector3<f64>, time0: f64, time1: f64, radius: f64, material: Arc<Material>) -> MovingSphere {
+    pub fn new(center0: Point3<f64>, center1: Point3<f64>, time0: f64, time1: f64, radius: f64, material: Arc<Material>) -> MovingSphere {
         MovingSphere {
             center0,
             center1,
@@ -65,7 +66,7 @@ impl MovingSphere {
         }
     }
 
-    fn center(&self, time: f64) -> Vector3<f64> {
+    fn center(&self, time: f64) -> Point3<f64> {
         self.center0 + ((time - self.time0) / (self.time1 - self.time0)) * (self.center1 - self.center0)
     }
 }
@@ -74,9 +75,9 @@ impl Hitable for MovingSphere {
     fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
         let center = self.center(ray.time);
         let oc = ray.origin - center;
-        let a = dot(ray.direction, ray.direction);
-        let b = dot(oc, ray.direction);
-        let c = dot(oc, oc) - self.radius * self.radius;
+        let a = ray.direction.dot(ray.direction);
+        let b = oc.dot(ray.direction);
+        let c = oc.dot(oc) - self.radius * self.radius;
         let discriminant = b * b - a * c;
         if discriminant > 0.0 {
             let t = (-b - (b * b - a * c).sqrt()) / a;

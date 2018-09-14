@@ -4,7 +4,7 @@ extern crate num_cpus;
 extern crate rand;
 
 use camera::Camera;
-use cgmath::{vec3, Vector3};
+use cgmath::{Point3, vec3, Vector3};
 use cgmath::prelude::*;
 use hitable::Hitable;
 use hitable_list::HitableList;
@@ -51,7 +51,7 @@ fn main() {
     let nx = 600;
     let ny = 400;
     let ns = 20;
-    let lookfrom = vec3(13.0, 2.0, 3.0);
+    let lookfrom = Point3::new(13.0, 2.0, 3.0);
     let lookat = vec3(0.0, 0.0, 0.0);
     let dist_to_focus = 10.0;
     let aperture = 0.0;
@@ -142,13 +142,13 @@ fn get_and_increment(counter: &Arc<Mutex<u32>>) -> u32 {
 fn random_scene<T : Rng>(rng: &mut T) -> HitableList {
     let mut vec: Vec<Box<Hitable>> = vec![];
 
-    vec.push(Box::new(Sphere::new(vec3(0.0, -1000.0, 0.0), 1000.0, Arc::new(Lambertian::new(vec3(0.5, 0.5, 0.5))))));
+    vec.push(Box::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, Arc::new(Lambertian::new(vec3(0.5, 0.5, 0.5))))));
 
     for a in -11..11 {
         for b in -11..11  {
-            let center = vec3(a as f64 + 0.9 * rng.gen::<f64>(), 0.2, b as f64 + 0.9 * rng.gen::<f64>());
+            let center = Point3::new(a as f64 + 0.9 * rng.gen::<f64>(), 0.2, b as f64 + 0.9 * rng.gen::<f64>());
 
-            if (center - vec3(4.0, 0.2, 0.0)).magnitude() > 0.9 {
+            if (center - Point3::new(4.0, 0.2, 0.0)).magnitude() > 0.9 {
                 let choose_mat = rng.gen::<f64>();
 
                 if choose_mat < 0.8 {
@@ -162,9 +162,9 @@ fn random_scene<T : Rng>(rng: &mut T) -> HitableList {
         }
     }
 
-    vec.push(Box::new(Sphere::new(vec3(0.0, 1.0, 0.0), 1.0, Arc::new(Dielectric::new(1.5)))));
-    vec.push(Box::new(Sphere::new(vec3(-4.0, 1.0, 0.0), 1.0, Arc::new(Lambertian::new(vec3(0.4, 0.2, 0.1))))));
-    vec.push(Box::new(Sphere::new(vec3(4.0, 1.0, 0.0), 1.0, Arc::new(Metal::new(vec3(0.7, 0.6, 0.5), 0.0)))));
+    vec.push(Box::new(Sphere::new(Point3::new(0.0, 1.0, 0.0), 1.0, Arc::new(Dielectric::new(1.5)))));
+    vec.push(Box::new(Sphere::new(Point3::new(-4.0, 1.0, 0.0), 1.0, Arc::new(Lambertian::new(vec3(0.4, 0.2, 0.1))))));
+    vec.push(Box::new(Sphere::new(Point3::new(4.0, 1.0, 0.0), 1.0, Arc::new(Metal::new(vec3(0.7, 0.6, 0.5), 0.0)))));
 
     HitableList::new(vec)
 }
