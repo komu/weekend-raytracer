@@ -4,8 +4,9 @@ extern crate num_cpus;
 extern crate rand;
 
 use camera::Camera;
-use cgmath::{Point3, vec3, Vector3};
+use cgmath::{Point3, vec3};
 use cgmath::prelude::*;
+use color::Color;
 use hitable::Hitable;
 use hitable_list::HitableList;
 use image::{ImageBuffer, Rgb};
@@ -19,31 +20,29 @@ use std::thread;
 use std::time::Instant;
 
 mod camera;
+mod color;
 mod hitable;
 mod hitable_list;
 mod material;
 mod ray;
 mod sphere;
 
-fn color<T: Hitable + ?Sized>(ray: &Ray, world: &T, depth: u32) -> Vector3<f64> {
+fn color<T: Hitable + ?Sized>(ray: &Ray, world: &T, depth: u32) -> Color {
     if let Some(rec) = world.hit(ray, 0.001, f64::max_value()) {
         if depth >= 50 {
-            return vec3(0.0, 0.0, 0.0);
+            return Color::black();
         }
 
         if let Some((scattered, attenuation)) = rec.material.scatter(ray, &rec) {
             let col = color(&scattered, world, depth + 1);
-            return vec3(
-                attenuation.x * col.x,
-                attenuation.y * col.y,
-                attenuation.z * col.z);
+            return attenuation * col;
         } else {
-            return vec3(0.0, 0.0, 0.0);
+            return Color::black();
         }
     } else {
         let unit_direction = ray.direction.normalize();
         let t = 0.5 * (unit_direction.y + 1.0);
-        return (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0);
+        return (1.0 - t) * Color::white() + t * Color::new(0.5, 0.7, 1.0);
     }
 }
 
@@ -95,7 +94,7 @@ fn main() {
                     let i = x;
                     let j = ny - y;
 
-                    let mut col = vec3(0.0, 0.0, 0.0);
+                    let mut col = Color::black();
                     for _ in 0..ns {
                         let u = (i as f64 + random::<f64>()) / (nx as f64);
                         let v = (j as f64 + random::<f64>()) / (ny as f64);
@@ -105,11 +104,11 @@ fn main() {
                     }
 
                     col /= ns as f64;
-                    col = col.map({ |v| { v.sqrt() } });
+                    col = col.gamma_correct();
 
-                    let ir = (255.99 * col.x) as u8;
-                    let ig = (255.99 * col.y) as u8;
-                    let ib = (255.99 * col.z) as u8;
+                    let ir = (255.99 * col.r) as u8;
+                    let ig = (255.99 * col.g) as u8;
+                    let ib = (255.99 * col.b) as u8;
 
                     row.push(Rgb([ir, ig, ib]));
                 }
@@ -142,7 +141,7 @@ fn get_and_increment(counter: &Arc<Mutex<u32>>) -> u32 {
 fn random_scene<T : Rng>(rng: &mut T) -> HitableList {
     let mut vec: Vec<Box<Hitable>> = vec![];
 
-    vec.push(Box::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, Arc::new(Lambertian::new(vec3(0.5, 0.5, 0.5))))));
+    vec.push(Box::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, Arc::new(Lambertian::new(Color::new(0.5, 0.5, 0.5))))));
 
     for a in -11..11 {
         for b in -11..11  {
@@ -152,9 +151,9 @@ fn random_scene<T : Rng>(rng: &mut T) -> HitableList {
                 let choose_mat = rng.gen::<f64>();
 
                 if choose_mat < 0.8 {
-                    vec.push(Box::new(MovingSphere::new(center, center + vec3(0.0, 0.5 * rng.gen::<f64>(), 0.0), 0.0, 1.0, 0.2, Arc::new(Lambertian::new(vec3(rng.gen::<f64>() * rng.gen::<f64>(), rng.gen::<f64>() * rng.gen::<f64>(), rng.gen::<f64>() * rng.gen::<f64>()))))));
+                    vec.push(Box::new(MovingSphere::new(center, center + vec3(0.0, 0.5 * rng.gen::<f64>(), 0.0), 0.0, 1.0, 0.2, Arc::new(Lambertian::new(Color::new(rng.gen::<f64>() * rng.gen::<f64>(), rng.gen::<f64>() * rng.gen::<f64>(), rng.gen::<f64>() * rng.gen::<f64>()))))));
                 } else if choose_mat < 0.95 {
-                    vec.push(Box::new(Sphere::new(center, 0.2, Arc::new(Metal::new(vec3(0.5 * (1.0 + rng.gen::<f64>()), 0.5 * (1.0 + rng.gen::<f64>()), 0.5 * (1.0 + rng.gen::<f64>())), 0.5 * rng.gen::<f64>())))));
+                    vec.push(Box::new(Sphere::new(center, 0.2, Arc::new(Metal::new(Color::new(0.5 * (1.0 + rng.gen::<f64>()), 0.5 * (1.0 + rng.gen::<f64>()), 0.5 * (1.0 + rng.gen::<f64>())), 0.5 * rng.gen::<f64>())))));
                 } else {
                     vec.push(Box::new(Sphere::new(center, 0.2, Arc::new(Dielectric::new(1.5)))));
                 }
@@ -163,8 +162,8 @@ fn random_scene<T : Rng>(rng: &mut T) -> HitableList {
     }
 
     vec.push(Box::new(Sphere::new(Point3::new(0.0, 1.0, 0.0), 1.0, Arc::new(Dielectric::new(1.5)))));
-    vec.push(Box::new(Sphere::new(Point3::new(-4.0, 1.0, 0.0), 1.0, Arc::new(Lambertian::new(vec3(0.4, 0.2, 0.1))))));
-    vec.push(Box::new(Sphere::new(Point3::new(4.0, 1.0, 0.0), 1.0, Arc::new(Metal::new(vec3(0.7, 0.6, 0.5), 0.0)))));
+    vec.push(Box::new(Sphere::new(Point3::new(-4.0, 1.0, 0.0), 1.0, Arc::new(Lambertian::new(Color::new(0.4, 0.2, 0.1))))));
+    vec.push(Box::new(Sphere::new(Point3::new(4.0, 1.0, 0.0), 1.0, Arc::new(Metal::new(Color::new(0.7, 0.6, 0.5), 0.0)))));
 
     HitableList::new(vec)
 }

@@ -1,25 +1,26 @@
 use cgmath::{dot, vec3, Vector3};
 use cgmath::prelude::*;
+use color::Color;
 use hitable::HitRecord;
 use rand::random;
 use ray::Ray;
 
 pub trait Material : Sync + Send {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Ray, Vector3<f64>)>;
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Ray, Color)>;
 }
 
 pub struct Lambertian {
-    albedo: Vector3<f64>
+    albedo: Color
 }
 
 impl Lambertian {
-    pub fn new(albedo: Vector3<f64>) -> Lambertian {
+    pub fn new(albedo: Color) -> Lambertian {
         Lambertian { albedo }
     }
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Ray, Vector3<f64>)> {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Ray, Color)> {
         let target = rec.p + rec.normal + random_in_unit_sphere();
         let scattered = Ray::new(rec.p, target - rec.p, r_in.time);
 
@@ -28,18 +29,18 @@ impl Material for Lambertian {
 }
 
 pub struct Metal {
-    albedo: Vector3<f64>,
+    albedo: Color,
     fuzz: f64,
 }
 
 impl Metal {
-    pub fn new(albedo: Vector3<f64>, fuzz: f64) -> Metal {
+    pub fn new(albedo: Color, fuzz: f64) -> Metal {
         Metal { albedo, fuzz: fuzz.min(1.0) }
     }
 }
 
 impl Material for Metal {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Ray, Vector3<f64>)> {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Ray, Color)> {
         let reflected = reflect(&r_in.direction.normalize(), &rec.normal);
         let scattered = Ray::new(rec.p, reflected + self.fuzz * random_in_unit_sphere(), r_in.time);
 
@@ -62,8 +63,8 @@ impl Dielectric {
 }
 
 impl Material for Dielectric {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Ray, Vector3<f64>)> {
-        let attenuation = vec3(1.0, 1.0, 1.0);
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Ray, Color)> {
+        let attenuation = Color::white();
         let outward_normal: Vector3<f64>;
         let ni_over_nt: f64;
         let cosine: f64;
