@@ -18,7 +18,7 @@ impl Hitable for HitableList {
         for element in self.list.iter() {
             if let Some(rec) = element.hit(ray, t_min, closest_so_far) {
                 closest_so_far = rec.t;
-                result = Some(rec.clone());
+                result = Some(rec);
             }
         }
         result

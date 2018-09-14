@@ -3,7 +3,6 @@ use material::Material;
 use ray::Ray;
 use std::rc::Rc;
 
-#[derive(Clone)]
 pub struct HitRecord {
     pub t: f64,
     pub p: Vector3<f64>,
