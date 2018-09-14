@@ -14,6 +14,7 @@ use ray::Ray;
 use sphere::{MovingSphere, Sphere};
 use std::io::prelude::*;
 use std::rc::Rc;
+use std::time::Instant;
 
 mod camera;
 mod hitable;
@@ -45,8 +46,8 @@ fn color<T: Hitable>(ray: &Ray, world: &T, depth: u32) -> Vector3<f64> {
 }
 
 fn main() {
-    let nx = 1200;
-    let ny = 800;
+    let nx = 400;
+    let ny = 200;
     let ns = 10;
     let lookfrom = vec3(13.0, 2.0, 3.0);
     let lookat = vec3(0.0, 0.0, 0.0);
@@ -58,6 +59,7 @@ fn main() {
 
     let camera = Camera::new(lookfrom, lookat, up, 20.0, aspect, aperture, dist_to_focus, 0.0, 1.0);
     let world = random_scene();
+    let now = Instant::now();
 
     let mut previous_j = 0;
     let img = ImageBuffer::from_fn(nx, ny, |i, j| {
@@ -88,7 +90,9 @@ fn main() {
         image::Rgb([ir, ig, ib])
     });
 
-    println!();
+    let elapsed_seconds = now.elapsed().as_secs();
+    let samples = (nx * ny * ns) as u64;
+    println!("\nrendered {} samples in {} seconds ({} samples/s)", samples, elapsed_seconds, samples / elapsed_seconds);
     img.save("images/output.png").unwrap();
 }
 
