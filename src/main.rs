@@ -9,6 +9,7 @@ use hitable::Hitable;
 use hitable_list::HitableList;
 use image::ImageBuffer;
 use material::{Dielectric, Lambertian, Metal};
+use material::Material;
 use rand::random;
 use ray::Ray;
 use sphere::Sphere;
@@ -22,25 +23,42 @@ mod material;
 mod ray;
 mod sphere;
 
+fn color<T: Hitable>(ray: &Ray, world: &T, depth: u32) -> Vector3<f64> {
+    if let Some(rec) = world.hit(ray, 0.001, f64::max_value()) {
+        if depth >= 50 {
+            return vec3(0.0, 0.0, 0.0);
+        }
+
+        if let Some((scattered, attenuation)) = rec.material.scatter(ray, &rec) {
+            let col = color(&scattered, world, depth + 1);
+            return vec3(
+                attenuation.x * col.x,
+                attenuation.y * col.y,
+                attenuation.z * col.z);
+        } else {
+            return vec3(0.0, 0.0, 0.0);
+        }
+    } else {
+        let unit_direction = ray.direction.normalize();
+        let t = 0.5 * (unit_direction.y + 1.0);
+        return (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0);
+    }
+}
+
 fn main() {
-    let nx = 600;
-    let ny = 300;
-    let ns = 100;
-    let lookfrom = vec3(3.0, 3.0, 2.0);
-    let lookat = vec3(0.0, 0.0, -1.0);
+    let nx = 1200;
+    let ny = 800;
+    let ns = 10;
+    let lookfrom = vec3(13.0, 2.0, 3.0);
+    let lookat = vec3(0.0, 0.0, 0.0);
+    let dist_to_focus = 10.0;
+    let aperture = 0.1;
+
     let up = vec3(0.0, 1.0, 0.0);
     let aspect = nx as f64 / ny as f64;
-    let dist_to_focus = (lookfrom - lookat).magnitude();
-    let aperture = 2.0;
 
     let camera = Camera::new(lookfrom, lookat, up, 20.0, aspect, aperture, dist_to_focus);
-    let world = HitableList::new(vec!(
-        Box::new(Sphere::new(vec3(0.0, 0.0, -1.0), 0.5, Rc::new(Lambertian::new(vec3(0.1, 0.2, 0.5))))),
-        Box::new(Sphere::new(vec3(0.0, -100.5, -1.0), 100.0, Rc::new(Lambertian::new(vec3(0.8, 0.8, 0.0))))),
-        Box::new(Sphere::new(vec3(1.0, 0.0, -1.0), 0.5, Rc::new(Metal::new(vec3(0.8, 0.6, 0.2), 1.0)))),
-        Box::new(Sphere::new(vec3(-1.0, 0.0, -1.0), 0.5, Rc::new(Dielectric::new(1.5)))),
-        Box::new(Sphere::new(vec3(-1.0, 0.0, -1.0), -0.45, Rc::new(Dielectric::new(1.5))))
-    ));
+    let world = random_scene();
 
     let mut previous_j = 0;
     let img = ImageBuffer::from_fn(nx, ny, |i, j| {
@@ -75,24 +93,34 @@ fn main() {
     img.save("images/foo.png").unwrap();
 }
 
-fn color<T: Hitable>(ray: &Ray, world: &T, depth: u32) -> Vector3<f64> {
-    if let Some(rec) = world.hit(ray, 0.001, f64::max_value()) {
-        if depth >= 50 {
-            return vec3(0.0, 0.0, 0.0);
-        }
+fn random_scene() -> HitableList {
+    let mut vec: Vec<Box<Hitable>> = vec![];
 
-        if let Some((scattered, attenuation)) = rec.material.scatter(ray, &rec) {
-            let col = color(&scattered, world, depth + 1);
-            return vec3(
-                attenuation.x * col.x,
-                attenuation.y * col.y,
-                attenuation.z * col.z);
-        } else {
-            return vec3(0.0, 0.0, 0.0);
+    vec.push(Box::new(Sphere::new(vec3(0.0, -1000.0, 0.0), 1000.0, Rc::new(Lambertian::new(vec3(0.5, 0.5, 0.5))))));
+
+    for a in -11..11 {
+        for b in -11..11 {
+            let center = vec3(a as f64 + 0.9 * random::<f64>(), 0.2, b as f64 + 0.9 * random::<f64>());
+
+            if (center - vec3(4.0, 0.2, 0.0)).magnitude() > 0.9 {
+                let material: Rc<Material>;
+                let choose_mat = random::<f64>();
+
+                if choose_mat < 0.8 {
+                    material = Rc::new(Lambertian::new(vec3(random::<f64>() * random::<f64>(), random::<f64>() * random::<f64>(), random::<f64>() * random::<f64>())));
+                } else if choose_mat < 0.95 {
+                    material = Rc::new(Metal::new(vec3(0.5 * (1.0 + random::<f64>()), 0.5 * (1.0 + random::<f64>()), 0.5 * (1.0 + random::<f64>())), 0.5 * random::<f64>()));
+                } else {
+                    material = Rc::new(Dielectric::new(1.5));
+                }
+                vec.push(Box::new(Sphere::new(center, 0.2, material)));
+            }
         }
-    } else {
-        let unit_direction = ray.direction.normalize();
-        let t = 0.5 * (unit_direction.y + 1.0);
-        return (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0);
     }
+
+    vec.push(Box::new(Sphere::new(vec3(0.0, 1.0, 0.0), 1.0, Rc::new(Dielectric::new(1.5)))));
+    vec.push(Box::new(Sphere::new(vec3(-4.0, 1.0, 0.0), 1.0, Rc::new(Lambertian::new(vec3(0.4, 0.2, 0.1))))));
+    vec.push(Box::new(Sphere::new(vec3(4.0, 1.0, 0.0), 1.0, Rc::new(Metal::new(vec3(0.7, 0.6, 0.5), 0.0)))));
+
+    HitableList::new(vec)
 }
