@@ -90,7 +90,7 @@ fn main() {
     });
 
     println!();
-    img.save("images/foo.png").unwrap();
+    img.save("images/output.png").unwrap();
 }
 
 fn random_scene() -> HitableList {

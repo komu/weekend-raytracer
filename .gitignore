@@ -2,4 +2,4 @@
 /target
 **/*.rs.bk
 /weekend-raytracer.iml
-/images/
+/images/output.png
