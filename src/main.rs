@@ -3,6 +3,7 @@ extern crate image;
 extern crate num_cpus;
 extern crate rand;
 
+use bvh_node::BvhNode;
 use camera::Camera;
 use cgmath::{Point3, vec3};
 use cgmath::prelude::*;
@@ -19,6 +20,8 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Instant;
 
+mod aabb;
+mod bvh_node;
 mod camera;
 mod color;
 mod hitable;
@@ -54,13 +57,15 @@ fn main() {
     let lookat = vec3(0.0, 0.0, 0.0);
     let dist_to_focus = 10.0;
     let aperture = 0.0;
+    let time0 = 0.0;
+    let time1 = 1.0;
 
     let up = vec3(0.0, 1.0, 0.0);
     let aspect = nx as f64 / ny as f64;
 
-    let camera = Arc::new(Camera::new(lookfrom, lookat, up, 20.0, aspect, aperture, dist_to_focus, 0.0, 1.0));
+    let camera = Arc::new(Camera::new(lookfrom, lookat, up, 20.0, aspect, aperture, dist_to_focus, time0, time1));
     let mut rng = thread_rng();
-    let world: Arc<HitableList> = Arc::new(random_scene(&mut rng));
+    let world = Arc::new(random_scene(&mut rng, time0, time1));
     let now = Instant::now();
 
     let cpus = num_cpus::get();
@@ -76,8 +81,8 @@ fn main() {
         let world = world.clone();
 
         threads.push(thread::spawn(move || {
-            let camera: &Camera = &camera;
-            let world: &HitableList = &*world;
+            let camera= &camera;
+            let world = &*world;
             let mut row = Vec::with_capacity(nx as usize);
 
             loop {
@@ -138,7 +143,7 @@ fn get_and_increment(counter: &Arc<Mutex<u32>>) -> u32 {
     value
 }
 
-fn random_scene<T : Rng>(rng: &mut T) -> HitableList {
+fn random_scene<T : Rng>(rng: &mut T, t0: f64, t1: f64) -> HitableList {
     let mut vec: Vec<Box<Hitable>> = vec![];
 
     vec.push(Box::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, Arc::new(Lambertian::new(Color::new(0.5, 0.5, 0.5))))));
@@ -165,5 +170,5 @@ fn random_scene<T : Rng>(rng: &mut T) -> HitableList {
     vec.push(Box::new(Sphere::new(Point3::new(-4.0, 1.0, 0.0), 1.0, Arc::new(Lambertian::new(Color::new(0.4, 0.2, 0.1))))));
     vec.push(Box::new(Sphere::new(Point3::new(4.0, 1.0, 0.0), 1.0, Arc::new(Metal::new(Color::new(0.7, 0.6, 0.5), 0.0)))));
 
-    HitableList::new(vec)
+    HitableList::new(vec![BvhNode::build(vec, t0, t1)])
 }

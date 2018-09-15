@@ -1,3 +1,4 @@
+use aabb::AABB;
 use cgmath::{Point3, Vector3};
 use material::Material;
 use ray::Ray;
@@ -12,6 +13,10 @@ pub struct HitRecord {
 
 pub trait Hitable : Sync + Send {
     fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
+    fn bounding_box(&self, t0: f64, t1: f64) -> Option<AABB>;
+    fn bounding_box_required(&self, t0: f64, t1: f64) -> AABB {
+        self.bounding_box(t0, t1).expect("no bounding box")
+    }
 }
 
 impl HitRecord {

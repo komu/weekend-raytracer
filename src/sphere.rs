@@ -1,5 +1,7 @@
+use aabb::AABB;
 use cgmath::Point3;
 use cgmath::prelude::*;
+use cgmath::vec3;
 use hitable::{Hitable, HitRecord};
 use material::Material;
 use ray::Ray;
@@ -8,7 +10,7 @@ use std::sync::Arc;
 pub struct Sphere {
     pub center: Point3<f64>,
     pub radius: f64,
-    pub material: Arc<Material>
+    pub material: Arc<Material>,
 }
 
 impl Sphere {
@@ -16,7 +18,7 @@ impl Sphere {
         Sphere {
             center,
             radius,
-            material
+            material,
         }
     }
 }
@@ -43,6 +45,15 @@ impl Hitable for Sphere {
         }
         None
     }
+
+    fn bounding_box(&self, _t0: f64, _t1: f64) -> Option<AABB> {
+        Some(sphere_box(&self.center, self.radius))
+    }
+}
+
+fn sphere_box(center: &Point3<f64>, radius: f64) -> AABB {
+    let v = vec3(radius, radius, radius);
+    AABB::new(center - v, center + v)
 }
 
 pub struct MovingSphere {
@@ -51,7 +62,7 @@ pub struct MovingSphere {
     time0: f64,
     time1: f64,
     pub radius: f64,
-    pub material: Arc<Material>
+    pub material: Arc<Material>,
 }
 
 impl MovingSphere {
@@ -62,7 +73,7 @@ impl MovingSphere {
             time0,
             time1,
             radius,
-            material
+            material,
         }
     }
 
@@ -94,5 +105,10 @@ impl Hitable for MovingSphere {
         }
         None
     }
-}
 
+    fn bounding_box(&self, t0: f64, t1: f64) -> Option<AABB> {
+        let box1 = sphere_box(&self.center(t0), self.radius);
+        let box2 = sphere_box(&self.center(t1), self.radius);
+        Some(box1.union(&box2))
+    }
+}

@@ -1,3 +1,4 @@
+use aabb::AABB;
 use hitable::{Hitable, HitRecord};
 use ray::Ray;
 
@@ -22,5 +23,25 @@ impl Hitable for HitableList {
             }
         }
         result
+    }
+
+    fn bounding_box(&self, t0: f64, t1: f64) -> Option<AABB> {
+        if self.list.is_empty() { return None; }
+
+        if let Some(first) = self.list[0].bounding_box(t0, t1) {
+            let mut result = first;
+
+            for item in &self.list[1..] {
+                if let Some(bb) = item.bounding_box(t0, t1) {
+                    result = result.union(&bb);
+                } else {
+                    return None;
+                }
+            }
+
+            Some(result)
+        } else {
+            None
+        }
     }
 }
