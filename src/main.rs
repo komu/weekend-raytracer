@@ -9,7 +9,6 @@ use cgmath::{Point3, vec3};
 use cgmath::prelude::*;
 use color::Color;
 use hitable::Hitable;
-use hitable_list::HitableList;
 use image::{ImageBuffer, Rgb};
 use material::{Dielectric, Lambertian, Metal};
 use rand::{random, Rng, thread_rng};
@@ -84,7 +83,7 @@ fn main() {
 
         threads.push(thread::spawn(move || {
             let camera= &camera;
-            let world = &*world;
+            let world: &Hitable = &**world;
             let mut row = Vec::with_capacity(nx as usize);
 
             loop {
@@ -145,12 +144,13 @@ fn get_and_increment(counter: &Arc<Mutex<u32>>) -> u32 {
     value
 }
 
-fn random_scene<T : Rng>(rng: &mut T, t0: f64, t1: f64) -> HitableList {
+fn random_scene<T : Rng>(rng: &mut T, t0: f64, t1: f64) -> Box<Hitable> {
     let mut vec: Vec<Box<Hitable>> = vec![];
 
     let base_texture = CheckerTexture::new(Box::new(Color::new(0.2, 0.3, 0.1)), Box::new(Color::new(0.9, 0.9, 0.9)));
+    let base = Box::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, Arc::new(Lambertian::new(Box::new(base_texture)))));
 
-    vec.push(Box::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, Arc::new(Lambertian::new(Box::new(base_texture))))));
+    vec.push(base);
 
     for a in -11..11 {
         for b in -11..11  {
@@ -176,5 +176,5 @@ fn random_scene<T : Rng>(rng: &mut T, t0: f64, t1: f64) -> HitableList {
     vec.push(Box::new(Sphere::new(Point3::new(-4.0, 1.0, 0.0), 1.0, Arc::new(Lambertian::new(Box::new(Color::new(0.4, 0.2, 0.1)))))));
     vec.push(Box::new(Sphere::new(Point3::new(4.0, 1.0, 0.0), 1.0, Arc::new(Metal::new(Color::new(0.7, 0.6, 0.5), 0.0)))));
 
-    HitableList::new(vec![BvhNode::build(vec, t0, t1)])
+    BvhNode::build(vec, t0, t1)
 }

@@ -6,6 +6,7 @@ pub struct HitableList {
     list: Vec<Box<Hitable>>
 }
 
+#[allow(dead_code)]
 impl HitableList {
     pub fn new(list: Vec<Box<Hitable>>) -> HitableList {
         HitableList { list }
