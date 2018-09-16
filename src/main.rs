@@ -19,6 +19,7 @@ use std::io::prelude::*;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Instant;
+use texture::CheckerTexture;
 
 mod aabb;
 mod bvh_node;
@@ -29,6 +30,7 @@ mod hitable_list;
 mod material;
 mod ray;
 mod sphere;
+mod texture;
 
 fn color<T: Hitable + ?Sized>(ray: &Ray, world: &T, depth: u32) -> Color {
     if let Some(rec) = world.hit(ray, 0.001, f64::max_value()) {
@@ -146,7 +148,9 @@ fn get_and_increment(counter: &Arc<Mutex<u32>>) -> u32 {
 fn random_scene<T : Rng>(rng: &mut T, t0: f64, t1: f64) -> HitableList {
     let mut vec: Vec<Box<Hitable>> = vec![];
 
-    vec.push(Box::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, Arc::new(Lambertian::new(Color::new(0.5, 0.5, 0.5))))));
+    let base_texture = CheckerTexture::new(Box::new(Color::new(0.2, 0.3, 0.1)), Box::new(Color::new(0.9, 0.9, 0.9)));
+
+    vec.push(Box::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, Arc::new(Lambertian::new(Box::new(base_texture))))));
 
     for a in -11..11 {
         for b in -11..11  {
@@ -156,9 +160,11 @@ fn random_scene<T : Rng>(rng: &mut T, t0: f64, t1: f64) -> HitableList {
                 let choose_mat = rng.gen::<f64>();
 
                 if choose_mat < 0.8 {
-                    vec.push(Box::new(MovingSphere::new(center, center + vec3(0.0, 0.5 * rng.gen::<f64>(), 0.0), 0.0, 1.0, 0.2, Arc::new(Lambertian::new(Color::new(rng.gen::<f64>() * rng.gen::<f64>(), rng.gen::<f64>() * rng.gen::<f64>(), rng.gen::<f64>() * rng.gen::<f64>()))))));
+                    let color = Color::new(rng.gen::<f64>() * rng.gen::<f64>(), rng.gen::<f64>() * rng.gen::<f64>(), rng.gen::<f64>() * rng.gen::<f64>());
+                    vec.push(Box::new(MovingSphere::new(center, center + vec3(0.0, 0.5 * rng.gen::<f64>(), 0.0), 0.0, 1.0, 0.2, Arc::new(Lambertian::new(Box::new(color))))));
                 } else if choose_mat < 0.95 {
-                    vec.push(Box::new(Sphere::new(center, 0.2, Arc::new(Metal::new(Color::new(0.5 * (1.0 + rng.gen::<f64>()), 0.5 * (1.0 + rng.gen::<f64>()), 0.5 * (1.0 + rng.gen::<f64>())), 0.5 * rng.gen::<f64>())))));
+                    let color = Color::new(0.5 * (1.0 + rng.gen::<f64>()), 0.5 * (1.0 + rng.gen::<f64>()), 0.5 * (1.0 + rng.gen::<f64>()));
+                    vec.push(Box::new(Sphere::new(center, 0.2, Arc::new(Metal::new(color, 0.5 * rng.gen::<f64>())))));
                 } else {
                     vec.push(Box::new(Sphere::new(center, 0.2, Arc::new(Dielectric::new(1.5)))));
                 }
@@ -167,7 +173,7 @@ fn random_scene<T : Rng>(rng: &mut T, t0: f64, t1: f64) -> HitableList {
     }
 
     vec.push(Box::new(Sphere::new(Point3::new(0.0, 1.0, 0.0), 1.0, Arc::new(Dielectric::new(1.5)))));
-    vec.push(Box::new(Sphere::new(Point3::new(-4.0, 1.0, 0.0), 1.0, Arc::new(Lambertian::new(Color::new(0.4, 0.2, 0.1))))));
+    vec.push(Box::new(Sphere::new(Point3::new(-4.0, 1.0, 0.0), 1.0, Arc::new(Lambertian::new(Box::new(Color::new(0.4, 0.2, 0.1)))))));
     vec.push(Box::new(Sphere::new(Point3::new(4.0, 1.0, 0.0), 1.0, Arc::new(Metal::new(Color::new(0.7, 0.6, 0.5), 0.0)))));
 
     HitableList::new(vec![BvhNode::build(vec, t0, t1)])

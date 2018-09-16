@@ -4,17 +4,18 @@ use color::Color;
 use hitable::HitRecord;
 use rand::random;
 use ray::Ray;
+use texture::Texture;
 
 pub trait Material : Sync + Send {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Ray, Color)>;
 }
 
 pub struct Lambertian {
-    albedo: Color
+    albedo: Box<Texture>
 }
 
 impl Lambertian {
-    pub fn new(albedo: Color) -> Lambertian {
+    pub fn new(albedo: Box<Texture>) -> Lambertian {
         Lambertian { albedo }
     }
 }
@@ -24,7 +25,7 @@ impl Material for Lambertian {
         let target = rec.p + rec.normal + random_in_unit_sphere();
         let scattered = Ray::new(rec.p, target - rec.p, r_in.time);
 
-        Some((scattered, self.albedo))
+        Some((scattered, self.albedo.value(0.0, 0.0, &rec.p)))
     }
 }
 
