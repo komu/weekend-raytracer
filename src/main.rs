@@ -1,3 +1,4 @@
+extern crate array_init;
 extern crate cgmath;
 extern crate image;
 extern crate num_cpus;
@@ -9,8 +10,10 @@ use cgmath::{Point3, vec3};
 use cgmath::prelude::*;
 use color::Color;
 use hitable::Hitable;
+use hitable_list::HitableList;
 use image::{ImageBuffer, Rgb};
 use material::{Dielectric, Lambertian, Metal};
+use perlin::NoiseTexture;
 use rand::{random, Rng, thread_rng};
 use ray::Ray;
 use sphere::{MovingSphere, Sphere};
@@ -27,6 +30,7 @@ mod color;
 mod hitable;
 mod hitable_list;
 mod material;
+mod perlin;
 mod ray;
 mod sphere;
 mod texture;
@@ -53,7 +57,7 @@ fn color<T: Hitable + ?Sized>(ray: &Ray, world: &T, depth: u32) -> Color {
 fn main() {
     let nx = 600;
     let ny = 400;
-    let ns = 20;
+    let ns = 50;
     let lookfrom = Point3::new(13.0, 2.0, 3.0);
     let lookat = vec3(0.0, 0.0, 0.0);
     let dist_to_focus = 10.0;
@@ -66,7 +70,8 @@ fn main() {
 
     let camera = Arc::new(Camera::new(lookfrom, lookat, up, 20.0, aspect, aperture, dist_to_focus, time0, time1));
     let mut rng = thread_rng();
-    let world = Arc::new(random_scene(&mut rng, time0, time1));
+//    let world = Arc::new(random_scene(&mut rng, time0, time1));
+    let world = Arc::new(two_perlin_spheres());
     let now = Instant::now();
 
     let cpus = num_cpus::get();
@@ -144,6 +149,17 @@ fn get_and_increment(counter: &Arc<Mutex<u32>>) -> u32 {
     value
 }
 
+#[allow(dead_code)]
+fn two_perlin_spheres() -> Box<Hitable> {
+    let mut vec: Vec<Box<Hitable>> = vec![];
+
+    vec.push(Box::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, Arc::new(Lambertian::new(Box::new(NoiseTexture::new(4.0)))))));
+    vec.push(Box::new(Sphere::new(Point3::new(0.0, 2.0, 0.0), 2.0, Arc::new(Lambertian::new(Box::new(NoiseTexture::new(4.0)))))));
+
+    Box::new(HitableList::new(vec))
+}
+
+#[allow(dead_code)]
 fn random_scene<T : Rng>(rng: &mut T, t0: f64, t1: f64) -> Box<Hitable> {
     let mut vec: Vec<Box<Hitable>> = vec![];
 
