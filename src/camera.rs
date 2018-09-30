@@ -18,7 +18,7 @@ pub struct Camera {
 
 impl Camera {
     pub fn new(lookfrom: Point3<f64>,
-               lookat: Vector3<f64>,
+               lookat: Point3<f64>,
                vup: Vector3<f64>,
                vfov: f64,
                aspect: f64,
@@ -29,7 +29,7 @@ impl Camera {
         let theta = vfov * PI / 180.0;
         let half_height = (theta / 2.0).tan();
         let half_width = aspect * half_height;
-        let w = (lookfrom.to_vec() - lookat).normalize();
+        let w = (lookfrom - lookat).normalize();
         let u = vup.cross(w).normalize();
         let v = w.cross(u);
         Camera {
